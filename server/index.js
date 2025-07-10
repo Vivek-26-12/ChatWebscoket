@@ -90,7 +90,9 @@ function getMessageKey(user1, user2) {
   return [user1, user2].sort().join(':');
 }
 
-const PORT = 8080;
-server.listen(PORT, () => {
-  console.log(`Server is running on ws://localhost:${PORT}`);
+const PORT = process.env.PORT || 8080;
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on ws://0.0.0.0:${PORT}`);
 });
+
