@@ -10,7 +10,8 @@ function App() {
   const ws = useRef(null);
 
   const connectWebSocket = () => {
-    ws.current = new WebSocket("ws://localhost:8080");
+    ws.current = new WebSocket("wss://chatwebscoket.onrender.com");
+
 
     ws.current.onopen = () => {
       setConnected(true);
