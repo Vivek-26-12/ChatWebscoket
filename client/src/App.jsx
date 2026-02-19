@@ -42,8 +42,8 @@ function App() {
   }, []);
 
   const connectWebSocket = () => {
-    // Using local for development as requested context implies local dev
-    ws.current = new WebSocket("ws://localhost:8080");
+    // connect to deployed server
+    ws.current = new WebSocket("wss://chatwebscoket.onrender.com");
 
     ws.current.onopen = () => {
       setConnected(true);
@@ -284,8 +284,8 @@ function App() {
                         key={group.id}
                         onClick={() => selectGroup(group)}
                         className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedGroup?.id === group.id
-                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                            : "bg-black text-[#00ff00]"
+                          ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                          : "bg-black text-[#00ff00]"
                           }`}
                       >
                         <span className="truncate"># {group.name}</span>
@@ -314,8 +314,8 @@ function App() {
                           key={user}
                           onClick={() => selectUser(user)}
                           className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedUser === user
-                              ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                              : "bg-black text-[#00ff00]"
+                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                            : "bg-black text-[#00ff00]"
                             }`}
                         >
                           <div className="flex items-center space-x-2 truncate">
