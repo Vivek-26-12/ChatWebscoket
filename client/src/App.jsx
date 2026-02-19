@@ -41,8 +41,37 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Handle Disbandment/Disconnects
+  useEffect(() => {
+    // If selected group is no longer in groups list, deselect
+    if (selectedGroup && groups.length > 0) { // Check only if we have groups (initial load might be empty)
+      // Actually if groups is empty array from server, we should deselect.
+      // But initial state is empty array too. 
+      // We rely on the fact that if connected and groups list updates, we sync.
+    }
+
+    // We can just check existence.
+    if (connected && selectedGroup) {
+      const stillExists = groups.find(g => g.id === selectedGroup.id);
+      if (!stillExists) {
+        setSelectedGroup(null);
+        // alert("Channel disbanded.");
+      }
+    }
+
+    // If selected user is no longer online, deselect
+    if (connected && selectedUser) {
+      const stillOnline = onlineUsers.includes(selectedUser);
+      if (!stillOnline) {
+        setSelectedUser("");
+        // alert("User disconnected.");
+      }
+    }
+  }, [groups, onlineUsers, selectedGroup, selectedUser, connected]);
+
+
   const connectWebSocket = () => {
-    // connect to deployed server
+    // connect to deployed server as requested
     ws.current = new WebSocket("wss://chatwebscoket.onrender.com");
 
     ws.current.onopen = () => {
@@ -59,6 +88,12 @@ function App() {
       else if (data.type === "groupList") {
         setGroups(data.groups);
       }
+      // groupCreated is handled via groupList update in my new server logic usually, 
+      // but if server pushes "groupCreated", we add it. 
+      // My new server logic pushes "groupList" for everything to be stateless/sync. 
+      // But legacy server parts might send groupCreated? current server sends groupCreated?
+      // My updated server sends 'groupList' for everything. 
+      // But I will keep 'groupCreated' handler just in case.
       else if (data.type === "groupCreated") {
         setGroups(prev => [...prev, data.group]);
       }
@@ -70,7 +105,6 @@ function App() {
           { from: data.from, to: username, text: data.text, timestamp: new Date() },
         ]);
 
-        // Update unread count if not chatting with this user
         if (selectedUser !== key) {
           setMessageCounts(prev => ({
             ...prev,
@@ -86,7 +120,6 @@ function App() {
           { ...data, to: "GROUP", timestamp: new Date() },
         ]);
 
-        // Update unread count if not currently viewing this group
         if (selectedGroup?.id !== key) {
           setMessageCounts(prev => ({
             ...prev,
@@ -113,7 +146,8 @@ function App() {
         from: username
       };
       ws.current.send(JSON.stringify(msg));
-      // Wait for broadcast to add locally for consistency
+      // We do NOT add locally for groups, we wait for relay to be stateless/synced with server
+      // "Show the ui of message coming" -> when it comes back.
     } else {
       const msg = {
         from: username,
@@ -121,6 +155,9 @@ function App() {
         text: message,
       };
       ws.current.send(JSON.stringify(msg));
+      // Add locally for private to feel instant, OR wait for relay?
+      // My server code for private does NOT relay back to sender. 
+      // So we MUST add locally for private messages.
       setChatMessages((prev) => [...prev, { ...msg, timestamp: new Date() }]);
     }
 
@@ -134,7 +171,7 @@ function App() {
     ws.current.send(JSON.stringify({
       type: 'createGroup',
       name: newGroupName,
-      members: [...newGroupMembers, username] // Add self
+      members: [...newGroupMembers] // Server adds current user
     }));
 
     setShowCreateGroup(false);
@@ -284,8 +321,8 @@ function App() {
                         key={group.id}
                         onClick={() => selectGroup(group)}
                         className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedGroup?.id === group.id
-                          ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                          : "bg-black text-[#00ff00]"
+                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                            : "bg-black text-[#00ff00]"
                           }`}
                       >
                         <span className="truncate"># {group.name}</span>
@@ -314,8 +351,8 @@ function App() {
                           key={user}
                           onClick={() => selectUser(user)}
                           className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedUser === user
-                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                            : "bg-black text-[#00ff00]"
+                              ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                              : "bg-black text-[#00ff00]"
                             }`}
                         >
                           <div className="flex items-center space-x-2 truncate">

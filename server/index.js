@@ -14,8 +14,10 @@ const wss = new WebSocket.Server({ server });
 // Maps
 const clients = new Map(); // clientId => { username, ws }
 const usernameToId = new Map(); // username => clientId
-const messages = new Map(); // "user1:user2" key or "groupId" => [MsgObj]
 const groups = new Map(); // groupId => { id, name, members: [username] }
+
+// We DO NOT store messages history anymore. 
+// "stateless... no need to store the data anywhere"
 
 wss.on('connection', (ws) => {
   let clientId = null;
@@ -32,59 +34,49 @@ wss.on('connection', (ws) => {
 
         currentUser = username;
         clientId = uuidv4();
-        
-        // Remove old connection if exists (simple handle)
+
         if (usernameToId.has(username)) {
-            const oldId = usernameToId.get(username);
-            if (clients.has(oldId)) {
-                clients.delete(oldId);
-            }
+          const oldId = usernameToId.get(username);
+          if (clients.has(oldId)) {
+            clients.delete(oldId);
+          }
         }
 
         clients.set(clientId, { username, ws });
         usernameToId.set(username, clientId);
         console.log(`User connected: ${username} (${clientId})`);
-        
-        // specialized broadcast
+
         broadcastOnlineCount();
 
         // Send existing groups for this user
-        const userGroups = [];
-        for (const g of groups.values()) {
-            if (g.members.includes(username)) {
-                userGroups.push(g);
-            }
-        }
-        ws.send(JSON.stringify({
-            type: 'groupList',
-            groups: userGroups
-        }));
+        sendUserGroups(username, ws);
       }
 
       // Create Group
       else if (data.type === 'createGroup') {
-        const { name, members } = data; // members is array of usernames
+        const { name, members } = data;
         const groupId = uuidv4();
-        // Ensure creator is in members
-        const uniqueMembers = [...new Set([...members, currentUser])];
-        
+        const uniqueMembers = [...new Set([...members, currentUser])]; // Ensure creator is in
+
+        // Per "stateless", we only create if it has members.
+        // If < 2, it might be disbanded immediately? 
+        // User says "if all the users are removed or single user is in a group chat disband".
+        // So a group must have >= 2 members to persist.
+        if (uniqueMembers.length < 2) {
+          // Maybe error or just don't create?
+          // I'll create it, but if they disconnect it goes away.
+          // Actually, "single user is in a group chat disband" -> implies existing group.
+          // I'll allow creation for now.
+        }
+
         const newGroup = { id: groupId, name, members: uniqueMembers };
         groups.set(groupId, newGroup);
-        
-        console.log(`Group created: ${name} (${groupId}) with members: ${uniqueMembers.join(', ')}`);
 
-        // Notify all members about the new group
+        console.log(`Group created: ${name} (${groupId})`);
+
+        // Notify all members
         uniqueMembers.forEach(member => {
-            const memberId = usernameToId.get(member);
-            if (memberId && clients.has(memberId)) {
-                const client = clients.get(memberId);
-                if (client.ws.readyState === WebSocket.OPEN) {
-                    client.ws.send(JSON.stringify({
-                        type: 'groupCreated',
-                        group: newGroup
-                    }));
-                }
-            }
+          sendUserGroups(member);
         });
       }
 
@@ -94,51 +86,39 @@ wss.on('connection', (ws) => {
         const group = groups.get(groupId);
 
         if (group) {
-            // Check if sender is member
-            if (!group.members.includes(from)) return;
+          if (!group.members.includes(from)) return;
 
-            const msgPayload = {
-                type: 'groupMessage',
-                groupId,
-                from,
-                text,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Store
-            if (!messages.has(groupId)) messages.set(groupId, []);
-            messages.get(groupId).push(msgPayload);
+          const msgPayload = {
+            type: 'groupMessage',
+            groupId,
+            from,
+            text,
+            timestamp: new Date().toISOString()
+          };
 
-            // Broadcast to all group members (including sender for simplicity/consistency)
-            group.members.forEach(member => {
-                const memberId = usernameToId.get(member);
-                if (memberId && clients.has(memberId)) {
-                    const client = clients.get(memberId);
-                    if (client.ws.readyState === WebSocket.OPEN) {
-                        client.ws.send(JSON.stringify(msgPayload));
-                    }
-                }
-            });
+          // Relay to all members who are online
+          group.members.forEach(member => {
+            const memberId = usernameToId.get(member);
+            if (memberId && clients.has(memberId)) {
+              const client = clients.get(memberId);
+              if (client.ws.readyState === WebSocket.OPEN) {
+                client.ws.send(JSON.stringify(msgPayload));
+              }
+            }
+          });
+          // No storage
         }
       }
 
       // Private Chat message
       else if (data.from && data.to && data.text) {
-        const key = getMessageKey(data.from, data.to);
-
-        if (!messages.has(key)) {
-          messages.set(key, []);
-        }
-
         const msgPayload = {
-            type: 'message',
-            from: data.from,
-            to: data.to,
-            text: data.text,
-            timestamp: new Date().toISOString()
+          type: 'message',
+          from: data.from,
+          to: data.to,
+          text: data.text,
+          timestamp: new Date().toISOString()
         };
-
-        messages.get(key).push(msgPayload);
 
         // Send to recipient
         const toClientId = usernameToId.get(data.to);
@@ -148,11 +128,7 @@ wss.on('connection', (ws) => {
             targetWS.send(JSON.stringify(msgPayload));
           }
         }
-        
-        // Also send back to sender if they are on a different connection (or just rely on client to add their own)
-        // For consistency in this specific app logic (based on previous code), 
-        // the client adds its own messages to state locally. 
-        // So we strictly only send to the 'to' client.
+        // No storage
       }
 
     } catch (err) {
@@ -163,13 +139,85 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (clientId && clients.has(clientId)) {
       const username = clients.get(clientId).username;
+
       console.log(`User disconnected: ${username} (${clientId})`);
       clients.delete(clientId);
       usernameToId.delete(username);
+
       broadcastOnlineCount();
+
+      // Handle Disconnection Logic for Groups
+      handleUserDisconnectFromGroups(username);
     }
   });
 });
+
+function handleUserDisconnectFromGroups(username) {
+  const affectedUsers = new Set();
+  const groupsToDelete = [];
+
+  // Iterate all groups
+  for (const [groupId, group] of groups.entries()) {
+    if (group.members.includes(username)) {
+      // Remove user
+      group.members = group.members.filter(m => m !== username);
+
+      // "if all the users are removed or single user is in a group chat disband"
+      if (group.members.length < 2) {
+        groupsToDelete.push(groupId);
+
+        // If there is 1 remaining member, they need to know group is gone
+        group.members.forEach(m => affectedUsers.add(m));
+      } else {
+        // Group survives (>= 2 members)
+        // Notify remaining members that user left (implicit via groupList update)
+        group.members.forEach(m => affectedUsers.add(m));
+      }
+    }
+  }
+
+  // Delete disbanded groups
+  groupsToDelete.forEach(gid => {
+    groups.delete(gid);
+    console.log(`Group ${gid} disbanded due to lack of members.`);
+  });
+
+  // Send updated group lists to all affected users
+  affectedUsers.forEach(user => {
+    // Only send if user is still online (we might have just deleted them from maps, but other users are there)
+    sendUserGroups(user);
+  });
+}
+
+function sendUserGroups(username, specificWs = null) {
+  // Find all groups this user is in
+  const userGroups = [];
+  for (const g of groups.values()) {
+    if (g.members.includes(username)) {
+      userGroups.push(g);
+    }
+  }
+
+  const payload = JSON.stringify({
+    type: 'groupList',
+    groups: userGroups
+  });
+
+  if (specificWs) {
+    if (specificWs.readyState === WebSocket.OPEN) {
+      specificWs.send(payload);
+    }
+  } else {
+    const id = usernameToId.get(username);
+    // Only send if online
+    if (id && clients.has(id)) {
+      const client = clients.get(id);
+      if (client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(payload);
+      }
+    }
+  }
+}
 
 function broadcastOnlineCount() {
   const count = clients.size;
@@ -186,11 +234,6 @@ function broadcastOnlineCount() {
       ws.send(payload);
     }
   }
-}
-
-// Helper to generate consistent key like "Alice:Bob"
-function getMessageKey(user1, user2) {
-  return [user1, user2].sort().join(':');
 }
 
 const PORT = process.env.PORT || 8080;
