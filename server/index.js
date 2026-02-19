@@ -146,6 +146,18 @@ wss.on('connection', (ws) => {
 
       broadcastOnlineCount();
 
+      // Notify all remaining clients that this user disconnected
+      // So they can erase private chats and anonymize group messages
+      const disconnectPayload = JSON.stringify({
+        type: 'userDisconnected',
+        username
+      });
+      for (let { ws: clientWs } of clients.values()) {
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(disconnectPayload);
+        }
+      }
+
       // Handle Disconnection Logic for Groups
       handleUserDisconnectFromGroups(username);
     }

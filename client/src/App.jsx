@@ -63,11 +63,11 @@ function App() {
     }
 
     // If selected user is no longer online, deselect
+    // (userDisconnected handler already clears messages, this is a safety net)
     if (connected && selectedUser) {
       const stillOnline = onlineUsers.includes(selectedUser);
       if (!stillOnline) {
         setSelectedUser("");
-        // alert("User disconnected.");
       }
     }
   }, [groups, onlineUsers, selectedGroup, selectedUser, connected]);
@@ -130,11 +130,56 @@ function App() {
           }));
         }
       }
+      else if (data.type === "userDisconnected") {
+        const leftUser = data.username;
+
+        // 1) Erase ALL private messages with the disconnected user
+        setChatMessages(prev => prev.filter(msg => {
+          // Keep group messages (but anonymize below)
+          if (msg.to === "GROUP" || msg.groupId) return true;
+          // Remove any private message involving the disconnected user
+          if (msg.from === leftUser || msg.to === leftUser) return false;
+          return true;
+        }));
+
+        // 2) Replace disconnected user's name with "IDK(Left)" in group messages
+        setChatMessages(prev => prev.map(msg => {
+          if ((msg.to === "GROUP" || msg.groupId) && msg.from === leftUser) {
+            return { ...msg, from: "IDK(Left)" };
+          }
+          return msg;
+        }));
+
+        // 3) Clear unread count for this user
+        setMessageCounts(prev => {
+          const next = { ...prev };
+          delete next[leftUser];
+          return next;
+        });
+
+        // 4) If this was the selected private chat, deselect
+        if (selectedUser === leftUser) {
+          setSelectedUser("");
+        }
+      }
     };
 
     ws.current.onclose = () => {
       setConnected(false);
       console.log("Disconnected");
+    };
+
+    // Ensure refresh/tab close sends close frame immediately to the server
+    const handleBeforeUnload = () => {
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.close();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup listener if component unmounts without page reload
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   };
 
