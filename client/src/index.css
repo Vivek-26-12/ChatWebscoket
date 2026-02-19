@@ -11,6 +11,8 @@ body {
   color: var(--terminal-green);
   font-family: 'VT323', monospace;
   overflow: hidden; /* Prevent double scrollbars with the CRT effect */
+  overscroll-behavior: none; /* Prevent pull-to-refresh on mobile */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
 /* CRT Scanline Effect */
@@ -98,4 +100,23 @@ body {
 ::selection {
   background: var(--terminal-green);
   color: var(--terminal-black);
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  /* Ensure inputs don't zoom on iOS */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

@@ -13,6 +13,9 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+  // Mobile sidebar toggle
+  const [showSidebar, setShowSidebar] = useState(true);
+
   // Group Creation Modal State
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -195,12 +198,14 @@ function App() {
     setSelectedUser(user);
     setSelectedGroup(null);
     setMessageCounts(prev => ({ ...prev, [user]: 0 }));
+    setShowSidebar(false); // auto-hide sidebar on mobile
   };
 
   const selectGroup = (group) => {
     setSelectedGroup(group);
     setSelectedUser("");
     setMessageCounts(prev => ({ ...prev, [group.id]: 0 }));
+    setShowSidebar(false); // auto-hide sidebar on mobile
   };
 
   // Filter messages for current view
@@ -223,21 +228,22 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-[#00ff00] font-mono p-4 crt flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-6xl h-[85vh] border-2 border-[#00ff00] relative bg-black z-10 shadow-[0_0_20px_rgba(0,255,0,0.2)] flex flex-col">
+    <div className="min-h-screen bg-black text-[#00ff00] font-mono p-1 sm:p-4 crt flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-6xl h-[100dvh] sm:h-[85vh] border-2 border-[#00ff00] relative bg-black z-10 shadow-[0_0_20px_rgba(0,255,0,0.2)] flex flex-col">
         {/* Terminal Header */}
         <div className="border-b-2 border-[#00ff00] p-2 flex justify-between items-center bg-[#003300] shrink-0">
-          <div className="text-glow font-bold uppercase tracking-widest">
-            SYSTEM.ROOT.CHAT_INTERFACE_V2.0
+          <div className="text-glow font-bold uppercase tracking-widest text-xs sm:text-base truncate">
+            <span className="hidden sm:inline">SYSTEM.ROOT.CHAT_INTERFACE_V2.0</span>
+            <span className="sm:hidden">SYS.CHAT_V2.0</span>
           </div>
-          <div className="flex space-x-4 text-xs">
-            <span>[ REC ]</span>
+          <div className="flex space-x-2 sm:space-x-4 text-xs shrink-0">
+            <span className="hidden sm:inline">[ REC ]</span>
             <span>{time}</span>
           </div>
         </div>
 
         {!connected ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-12">
+          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-12">
             <div className="mb-8 animate-pulse text-center">
               <pre className="text-[8px] md:text-[10px] leading-none text-[#00ff00] mb-6 whitespace-pre">
                 {`
@@ -251,7 +257,7 @@ function App() {
                                        |___/ 
 `}
               </pre>
-              <h1 className="text-4xl font-bold text-glow mb-2 uppercase">
+              <h1 className="text-2xl sm:text-4xl font-bold text-glow mb-2 uppercase">
                 &gt; Initialize Connection_
               </h1>
               <p className="text-[#00ff00]/70 text-lg">Establish secure link to server node...</p>
@@ -284,9 +290,9 @@ function App() {
             </form>
           </div>
         ) : (
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex overflow-hidden relative">
             {/* Sidebar */}
-            <div className="w-full md:w-80 border-r-2 border-[#00ff00] flex flex-col bg-black/90 shrink-0">
+            <div className={`absolute inset-0 z-30 md:relative md:z-auto w-full md:w-80 border-r-2 border-[#00ff00] flex flex-col bg-black/95 md:bg-black/90 shrink-0 transition-transform duration-200 ease-in-out ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
               <div className="p-4 border-b-2 border-[#00ff00] bg-[#001100]">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 border-2 border-[#00ff00] flex items-center justify-center bg-[#00ff00] text-black font-bold text-xl">
@@ -321,8 +327,8 @@ function App() {
                         key={group.id}
                         onClick={() => selectGroup(group)}
                         className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedGroup?.id === group.id
-                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                            : "bg-black text-[#00ff00]"
+                          ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                          : "bg-black text-[#00ff00]"
                           }`}
                       >
                         <span className="truncate"># {group.name}</span>
@@ -351,8 +357,8 @@ function App() {
                           key={user}
                           onClick={() => selectUser(user)}
                           className={`cursor-pointer p-2 border border-[#00ff00] transition-all duration-100 hover:bg-[#001100] flex justify-between items-center ${selectedUser === user
-                              ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
-                              : "bg-black text-[#00ff00]"
+                            ? "bg-[#00ff00] text-black font-bold shadow-[0_0_10px_rgba(0,255,0,0.4)]"
+                            : "bg-black text-[#00ff00]"
                             }`}
                         >
                           <div className="flex items-center space-x-2 truncate">
@@ -380,24 +386,31 @@ function App() {
               {selectedUser || selectedGroup ? (
                 <>
                   {/* Chat Header */}
-                  <div className="p-4 border-b-2 border-[#00ff00] bg-[#001100] z-10 flex justify-between items-center shrink-0">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl animate-pulse text-[#00ff00]">●</span>
-                      <div>
-                        <h4 className="text-lg font-bold uppercase tracking-widest text-glow">
+                  <div className="p-3 sm:p-4 border-b-2 border-[#00ff00] bg-[#001100] z-10 flex justify-between items-center shrink-0">
+                    <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                      {/* Mobile Back Button */}
+                      <button
+                        onClick={() => setShowSidebar(true)}
+                        className="md:hidden px-2 py-1 border border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00] hover:text-black transition-colors text-xs shrink-0"
+                      >
+                        ◄
+                      </button>
+                      <span className="text-xl sm:text-2xl animate-pulse text-[#00ff00] shrink-0">●</span>
+                      <div className="min-w-0">
+                        <h4 className="text-sm sm:text-lg font-bold uppercase tracking-widest text-glow truncate">
                           TARGET: {selectedGroup ? `# ${selectedGroup.name}` : selectedUser}
                         </h4>
-                        <p className="text-xs text-[#00ff00]/70 uppercase">
+                        <p className="text-[10px] sm:text-xs text-[#00ff00]/70 uppercase truncate">
                           {selectedGroup
                             ? `MEMBERS: ${selectedGroup.members.length} // MSGS: ${currentMessages.length}`
-                            : `ENCRYPTION: AES-256 // STATUS: CONNECTED // MSGS: ${currentMessages.length}`}
+                            : `AES-256 // CONNECTED // MSGS: ${currentMessages.length}`}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 p-6 overflow-y-auto z-10 font-mono custom-scrollbar">
+                  <div className="flex-1 p-3 sm:p-6 overflow-y-auto z-10 font-mono custom-scrollbar">
                     <div className="space-y-4">
                       {currentMessages.map((msg, idx) => (
                         <div
@@ -423,54 +436,62 @@ function App() {
                   </div>
 
                   {/* Message Input */}
-                  <div className="p-4 border-t-2 border-[#00ff00] bg-black z-10 shrink-0">
-                    <div className="flex items-center space-x-2 relative">
+                  <div className="p-2 sm:p-4 border-t-2 border-[#00ff00] bg-black z-10 shrink-0">
+                    <div className="flex items-center space-x-1 sm:space-x-2 relative">
                       {showEmojiPicker && (
                         <div className="absolute bottom-full mb-2 left-0 z-50">
                           <EmojiPicker
                             onEmojiClick={onEmojiClick}
                             theme="dark"
-                            width={300}
-                            height={400}
+                            width={280}
+                            height={350}
                           />
                         </div>
                       )}
 
                       <button
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="px-3 py-3 border-2 border-[#00ff00] hover:bg-[#001100] text-xl grayscale hover:grayscale-0 transition-all"
+                        className="px-2 sm:px-3 py-2 sm:py-3 border-2 border-[#00ff00] hover:bg-[#001100] text-lg sm:text-xl grayscale hover:grayscale-0 transition-all shrink-0"
                       >
                         ☺
                       </button>
 
-                      <div className="flex-1 relative flex items-center border-2 border-[#00ff00] bg-black p-1 focus-within:bg-[#001100] transition-colors">
-                        <span className="pl-2 pr-2 text-xl animate-pulse">&gt;</span>
+                      <div className="flex-1 relative flex items-center border-2 border-[#00ff00] bg-black p-1 focus-within:bg-[#001100] transition-colors min-w-0">
+                        <span className="pl-1 sm:pl-2 pr-1 sm:pr-2 text-lg sm:text-xl animate-pulse">&gt;</span>
                         <input
                           type="text"
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                           placeholder="INPUT_MESSAGE..."
-                          className="w-full px-2 py-2 bg-transparent border-none focus:outline-none text-[#00ff00] placeholder-[#00ff00]/30 font-mono text-lg"
+                          className="w-full px-1 sm:px-2 py-2 bg-transparent border-none focus:outline-none text-[#00ff00] placeholder-[#00ff00]/30 font-mono text-base sm:text-lg"
                         />
                       </div>
                       <button
                         onClick={handleSendMessage}
-                        className="px-6 py-3 bg-[#00ff00] text-black font-bold border-2 border-[#00ff00] hover:bg-black hover:text-[#00ff00] transition-all uppercase tracking-wider"
+                        className="px-3 sm:px-6 py-2 sm:py-3 bg-[#00ff00] text-black font-bold border-2 border-[#00ff00] hover:bg-black hover:text-[#00ff00] transition-all uppercase tracking-wider text-sm sm:text-base shrink-0"
                       >
-                        SEND
+                        <span className="hidden sm:inline">SEND</span>
+                        <span className="sm:hidden">►</span>
                       </button>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center z-10">
-                  <div className="text-center opacity-50">
-                    <div className="w-24 h-24 border-4 border-[#00ff00] rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                      <span className="text-4xl font-bold">?</span>
+                  <div className="text-center opacity-50 px-4">
+                    <div className="w-16 sm:w-24 h-16 sm:h-24 border-4 border-[#00ff00] rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 animate-pulse">
+                      <span className="text-2xl sm:text-4xl font-bold">?</span>
                     </div>
-                    <h3 className="text-2xl font-bold uppercase tracking-widest mb-2">Awaiting Input</h3>
-                    <p className="text-[#00ff00] text-lg uppercase">&lt; Select a channel or node &gt;</p>
+                    <h3 className="text-lg sm:text-2xl font-bold uppercase tracking-widest mb-2">Awaiting Input</h3>
+                    <p className="text-[#00ff00] text-sm sm:text-lg uppercase">&lt; Select a channel or node &gt;</p>
+                    {/* Mobile hint */}
+                    <button
+                      onClick={() => setShowSidebar(true)}
+                      className="md:hidden mt-4 px-4 py-2 border border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00] hover:text-black transition-colors text-xs uppercase"
+                    >
+                      ◄ Open Contacts
+                    </button>
                   </div>
                 </div>
               )}
