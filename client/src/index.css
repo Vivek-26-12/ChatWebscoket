@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+:root {
+  --terminal-green: #00ff00;
+  --terminal-black: #000000;
+  --terminal-dim: #003300;
+}
+
+body {
+  background-color: var(--terminal-black);
+  color: var(--terminal-green);
+  font-family: 'VT323', monospace;
+  overflow: hidden; /* Prevent double scrollbars with the CRT effect */
+}
+
+/* CRT Scanline Effect */
+.crt::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 2;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+.crt::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.027906; }
+  5% { opacity: 0.048532; }
+  10% { opacity: 0.026043; }
+  15% { opacity: 0.065138; }
+  20% { opacity: 0.030217; }
+  25% { opacity: 0.052549; }
+  30% { opacity: 0.027906; }
+  35% { opacity: 0.048532; }
+  40% { opacity: 0.026043; }
+  45% { opacity: 0.065138; }
+  50% { opacity: 0.030217; }
+  55% { opacity: 0.052549; }
+  60% { opacity: 0.027906; }
+  65% { opacity: 0.048532; }
+  70% { opacity: 0.026043; }
+  75% { opacity: 0.065138; }
+  80% { opacity: 0.030217; }
+  85% { opacity: 0.052549; }
+  90% { opacity: 0.027906; }
+  95% { opacity: 0.048532; }
+  100% { opacity: 0.026043; }
+}
+
+/* Text Glow */
+.text-glow {
+  text-shadow: 0 0 5px var(--terminal-green);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--terminal-black);
+  border-left: 1px solid var(--terminal-dim);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--terminal-dim);
+  border: 1px solid var(--terminal-green);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--terminal-green);
+}
+
+/* Selection */
+::selection {
+  background: var(--terminal-green);
+  color: var(--terminal-black);
+}
