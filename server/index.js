@@ -38,6 +38,9 @@ wss.on('connection', (ws) => {
         if (usernameToId.has(username)) {
           const oldId = usernameToId.get(username);
           if (clients.has(oldId)) {
+            const oldClient = clients.get(oldId);
+            // Close the old WebSocket so it doesn't linger as a ghost
+            try { oldClient.ws.close(); } catch (e) { /* ignore */ }
             clients.delete(oldId);
           }
         }
@@ -140,26 +143,33 @@ wss.on('connection', (ws) => {
     if (clientId && clients.has(clientId)) {
       const username = clients.get(clientId).username;
 
-      console.log(`User disconnected: ${username} (${clientId})`);
+      // Only perform full cleanup if this clientId is still the active one for this username.
+      // If the user reconnected, usernameToId already points to the NEW clientId,
+      // and the old clientId was already removed from clients by the join handler.
+      const isActiveConnection = usernameToId.get(username) === clientId;
+
+      console.log(`User disconnected: ${username} (${clientId}) [active=${isActiveConnection}]`);
       clients.delete(clientId);
-      usernameToId.delete(username);
 
-      broadcastOnlineCount();
+      if (isActiveConnection) {
+        usernameToId.delete(username);
 
-      // Notify all remaining clients that this user disconnected
-      // So they can erase private chats and anonymize group messages
-      const disconnectPayload = JSON.stringify({
-        type: 'userDisconnected',
-        username
-      });
-      for (let { ws: clientWs } of clients.values()) {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(disconnectPayload);
+        broadcastOnlineCount();
+
+        // Notify all remaining clients that this user disconnected
+        const disconnectPayload = JSON.stringify({
+          type: 'userDisconnected',
+          username
+        });
+        for (let { ws: clientWs } of clients.values()) {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(disconnectPayload);
+          }
         }
-      }
 
-      // Handle Disconnection Logic for Groups
-      handleUserDisconnectFromGroups(username);
+        // Handle Disconnection Logic for Groups
+        handleUserDisconnectFromGroups(username);
+      }
     }
   });
 });

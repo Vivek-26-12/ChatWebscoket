@@ -472,7 +472,7 @@ function App() {
                             <p className="text-xs font-bold mb-1 uppercase opacity-70 border-b border-[#00ff00]/30 pb-1 inline-block">
                               {msg.from === username ? ">> YOU" : `<< ${msg.from}`}
                             </p>
-                            <p className="break-words text-lg leading-relaxed mt-1">{msg.text}</p>
+                            <p className="message-text text-lg leading-relaxed mt-1">{msg.text}</p>
                           </div>
                         </div>
                       ))}
@@ -496,25 +496,45 @@ function App() {
 
                       <button
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="px-2 sm:px-3 py-2 sm:py-3 border-2 border-[#00ff00] hover:bg-[#001100] text-lg sm:text-xl grayscale hover:grayscale-0 transition-all shrink-0"
+                        className="self-end px-2 sm:px-3 py-2 sm:py-3 border-2 border-[#00ff00] hover:bg-[#001100] text-lg sm:text-xl grayscale hover:grayscale-0 transition-all shrink-0"
                       >
                         ☺
                       </button>
 
-                      <div className="flex-1 relative flex items-center border-2 border-[#00ff00] bg-black p-1 focus-within:bg-[#001100] transition-colors min-w-0">
-                        <span className="pl-1 sm:pl-2 pr-1 sm:pr-2 text-lg sm:text-xl animate-pulse">&gt;</span>
-                        <input
-                          type="text"
+                      <div className="flex-1 relative flex items-start border-2 border-[#00ff00] bg-black p-1 focus-within:bg-[#001100] transition-colors min-w-0">
+                        <span className="pl-1 sm:pl-2 pr-1 sm:pr-2 text-lg sm:text-xl animate-pulse mt-1">&gt;</span>
+                        <textarea
+                          rows="1"
                           value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                          onChange={(e) => {
+                            setMessage(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            } else if (e.key === "Tab") {
+                              e.preventDefault();
+                              const start = e.target.selectionStart;
+                              const end = e.target.selectionEnd;
+                              const value = e.target.value;
+                              setMessage(value.substring(0, start) + "  " + value.substring(end));
+                              // Note: cursor position will reset after state update in simple React, 
+                              // but for this task this is a huge improvement for code sharing.
+                              setTimeout(() => {
+                                e.target.selectionStart = e.target.selectionEnd = start + 2;
+                              }, 0);
+                            }
+                          }}
                           placeholder="INPUT_MESSAGE..."
-                          className="w-full px-1 sm:px-2 py-2 bg-transparent border-none focus:outline-none text-[#00ff00] placeholder-[#00ff00]/30 font-mono text-base sm:text-lg"
+                          className="w-full px-1 sm:px-2 py-2 bg-transparent border-none focus:outline-none text-[#00ff00] placeholder-[#00ff00]/30 font-mono text-base sm:text-lg resize-none max-h-32 custom-scrollbar"
                         />
                       </div>
                       <button
                         onClick={handleSendMessage}
-                        className="px-3 sm:px-6 py-2 sm:py-3 bg-[#00ff00] text-black font-bold border-2 border-[#00ff00] hover:bg-black hover:text-[#00ff00] transition-all uppercase tracking-wider text-sm sm:text-base shrink-0"
+                        className="self-end px-3 sm:px-6 py-2 sm:py-3 bg-[#00ff00] text-black font-bold border-2 border-[#00ff00] hover:bg-black hover:text-[#00ff00] transition-all uppercase tracking-wider text-sm sm:text-base shrink-0"
                       >
                         <span className="hidden sm:inline">SEND</span>
                         <span className="sm:hidden">►</span>
